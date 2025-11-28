@@ -1,65 +1,54 @@
-pipeline {
-    agent any
+pipeline{
+	agent any
+	tools{
+		maven 'M2_HOME'
+	}
+	environment {
+ 		DOCKER_CREDENTIALS=credentials('docker-hub-creds')
+ 	 }
+	stages {
+ 		stage('Code Checkout') {
+ 			steps {
+ 				git branch: 'main',
+ 				url: 'https://github.com/yssfmlha/Mlaouhia_Youssef_4SAE9.git'
+ 			}
+ 		}
+ 		stage('Code Build') {
+ 			steps {
+ 				sh 'mvn test'
+ 			}
+ 		}
+		stage('Code Package'){
+			steps{
+				sh'mvn package'
+			}
+		}
+		stage('Docker Build'){
+			steps{
+				script{
+					sh "docker build -t yssfmlha/student-management:1.0 ."
+				}
+			}
+		}
+		stage('Docker Push'){
+			steps{
+				script{
+					sh 'echo $DOCKER_CREDENTIALS_PSW | docker login -u $DOCKER_CREDENTIALS_USR --password-stdin'
+					sh "docker push yssfmlha/student-management:1.0"
+				}
+			}
+		}
+ 	}
+post {
+ always {
+ echo "======always======"
+ }
+ success {
+ echo "=====pipeline executed successfully ====="
+ }
+ failure {
+ echo "======pipeline execution failed======"
+ }
+ }
 
-    environment {
-        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials') 
-        DOCKER_IMAGE = "yahya123/myapp"
-        TAG = "1.0.${BUILD_NUMBER}"
-    }
-
-    stages {
-
-        stage('Checkout') {
-            steps {
-                git 'https://github.com/….git'
-            }
-        }
-
-        stage('Build App') {
-            steps {
-                sh 'npm install'      // or mvn package / whatever your app uses
-            }
-        }
-
-        stage('Docker Build') {
-            steps {
-                sh """
-                docker build -t ${DOCKER_IMAGE}:${TAG} .
-                """
-            }
-        }
-
-        stage('Docker Login') {
-            steps {
-                sh """
-                echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin
-                """
-            }
-        }
-
-        stage('Docker Push') {
-            steps {
-                sh """
-                docker push ${DOCKER_IMAGE}:${TAG}
-                """
-            }
-        }
-
-        stage('Deploy (Optional)') {
-            steps {
-                sh """
-                docker pull ${DOCKER_IMAGE}:${TAG}
-                docker stop myapp || true
-                docker rm myapp || true
-                docker run -d --name myapp -p 8080:8080 ${DOCKER_IMAGE}:${TAG}
-                """
-            }
-        }
-    }
-
-    post {
-        always {
-            sh 'docker logout'
-        }
-    }
 }
